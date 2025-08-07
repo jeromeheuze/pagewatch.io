@@ -205,14 +205,13 @@
                             required
                             style="width: 100%;"
                     >
-                        <sl-icon name="link" slot="prefix"></sl-icon>
+                        🔗
                     </sl-input>
                 </div>
 
                 <div class="form-row">
                     <sl-button type="submit" variant="primary" size="large" id="takeScreenshotBtn">
-                        <sl-icon name="camera" slot="prefix"></sl-icon>
-                        Take Screenshot
+                        📷 Take Screenshot
                     </sl-button>
                     <div style="color: #94a3b8; font-size: 0.9rem; align-self: center;">
                         <span id="usage-display">Loading...</span>
@@ -221,8 +220,7 @@
             </form>
 
             <div class="queue-info">
-                <sl-icon name="info-circle"></sl-icon>
-                Screenshots are processed by our dedicated hardware. Typical processing time: 30-60 seconds.
+                ℹ️ Screenshots are processed by our dedicated hardware. Typical processing time: 30-60 seconds.
             </div>
 
             <div id="statusContainer"></div>
@@ -231,17 +229,17 @@
 
         <div class="features">
             <div class="feature-card">
-                <sl-icon name="monitor" style="font-size: 2rem; color: #3b82f6; margin-bottom: 1rem;"></sl-icon>
+                <div style="font-size: 2rem; color: #3b82f6; margin-bottom: 1rem;">🖥️</div>
                 <h3 style="color: #fff;">Desktop Quality</h3>
                 <p style="color: #94a3b8;">Full desktop resolution screenshots captured with real browsers on dedicated hardware.</p>
             </div>
             <div class="feature-card">
-                <sl-icon name="zap" style="font-size: 2rem; color: #8b5cf6; margin-bottom: 1rem;"></sl-icon>
+                <div style="font-size: 2rem; color: #8b5cf6; margin-bottom: 1rem;">⚡</div>
                 <h3 style="color: #fff;">Lightning Fast</h3>
                 <p style="color: #94a3b8;">Powered by NanoPi and Raspberry Pi 4 clusters for reliable, fast screenshot generation.</p>
             </div>
             <div class="feature-card">
-                <sl-icon name="cloud" style="font-size: 2rem; color: #06b6d4; margin-bottom: 1rem;"></sl-icon>
+                <div style="font-size: 2rem; color: #06b6d4; margin-bottom: 1rem;">☁️</div>
                 <h3 style="color: #fff;">CDN Hosted</h3>
                 <p style="color: #94a3b8;">All screenshots automatically uploaded to global CDN for fast access worldwide.</p>
             </div>
@@ -412,12 +410,10 @@
                     <img src="${result.cdn_url}" alt="Website Screenshot" class="screenshot-preview" />
                     <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
                         <sl-button href="${result.cdn_url}" target="_blank" variant="primary" size="small">
-                            <sl-icon name="external-link" slot="prefix"></sl-icon>
-                            View Full Size
+                            🔗 View Full Size
                         </sl-button>
                         <sl-button onclick="copyToClipboard('${result.cdn_url}')" variant="default" size="small">
-                            <sl-icon name="copy" slot="prefix"></sl-icon>
-                            Copy URL
+                            📋 Copy URL
                         </sl-button>
                     </div>
                     <p style="margin-top: 1rem; font-size: 0.9rem; color: #94a3b8;">

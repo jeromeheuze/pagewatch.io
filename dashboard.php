@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <title>Dashboard – PageWatch.io</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/dark.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
     <style>
         body {
             margin: 0;
@@ -183,6 +183,34 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Top-right alert notifications */
+        sl-alert {
+            position: absolute !important;
+            top: 1rem !important;
+            right: 1rem !important;
+            z-index: 9999 !important;
+            max-width: 400px !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+            border-radius: 8px !important;
+            animation: slideInRight 0.3s ease-out !important;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Stack multiple alerts */
+        sl-alert:nth-of-type(n+2) {
+            top: calc(1rem + (80px * var(--alert-index, 1))) !important;
+        }
     </style>
 </head>
 <body>
@@ -232,11 +260,10 @@
                         class="url-input"
                         required
                 >
-                    <sl-icon name="link" slot="prefix"></sl-icon>
+                    🔗
                 </sl-input>
                 <sl-button type="submit" variant="primary" size="large" id="quickScreenshotBtn">
-                    <sl-icon name="camera" slot="prefix"></sl-icon>
-                    Capture
+                    📷 Capture
                 </sl-button>
             </div>
         </form>
@@ -247,8 +274,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="color: #fff; margin: 0;">Recent Screenshots</h2>
         <sl-button variant="default" size="small" onclick="loadScreenshots()">
-            <sl-icon name="refresh-cw" slot="prefix"></sl-icon>
-            Refresh
+            🔄 Refresh
         </sl-button>
     </div>
 
@@ -409,13 +435,18 @@
                             <sl-button onclick="copyToClipboard('${screenshot.cdn_url}')" variant="default" size="small">
                                 <sl-icon name="copy"></sl-icon>
                             </sl-button>
+                            <sl-button onclick="deleteScreenshot(${screenshot.id})" variant="danger" size="small" outline>
+                             <sl-icon name="trash"></sl-icon>
+                             </sl-button>
                         </div>` : ''
         }
 
                     ${screenshot.status === 'failed' && screenshot.error_message ?
             `<div style="margin-top: 1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 6px; font-size: 0.8rem; color: #ef4444;">
                             ${screenshot.error_message}
-                        </div>` : ''
+                        </div><br><sl-button onclick="deleteScreenshot(${screenshot.id})" variant="danger" size="small" outline>
+                             <sl-icon name="trash"></sl-icon> Delete
+                             </sl-button>` : ''
         }
                 </div>
             `;
@@ -443,14 +474,95 @@
 
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-            const toast = Object.assign(document.createElement('sl-alert'), {
+            const alert = Object.assign(document.createElement('sl-alert'), {
                 variant: 'success',
                 duration: 3000,
-                innerHTML: '<sl-icon slot="icon" name="check"></sl-icon>URL copied to clipboard!'
+                closable: true,
+                innerHTML: '✅ URL copied to clipboard!'
             });
-            document.body.appendChild(toast);
-            toast.show();
+            document.body.appendChild(alert);
+            alert.show();
+        }).catch(() => {
+            const alert = Object.assign(document.createElement('sl-alert'), {
+                variant: 'danger',
+                duration: 3000,
+                closable: true,
+                innerHTML: '❌ Failed to copy URL'
+            });
+            document.body.appendChild(alert);
+            alert.show();
         });
+    }
+
+    async function deleteScreenshot(screenshotId) {
+        if (!confirm('Are you sure you want to delete this screenshot? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('api/delete-screenshot.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ screenshot_id: screenshotId })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const alert = Object.assign(document.createElement('sl-alert'), {
+                    variant: 'success',
+                    duration: 3000,
+                    closable: true,
+                    innerHTML: '✅ Screenshot deleted successfully'
+                });
+                document.body.appendChild(alert);
+                alert.show();
+
+                // Reload screenshots after successful deletion
+                setTimeout(() => loadScreenshots(), 500);
+            } else {
+                const alert = Object.assign(document.createElement('sl-alert'), {
+                    variant: 'danger',
+                    duration: 5000,
+                    closable: true,
+                    innerHTML: `❌ Failed to delete: ${result.message || 'Unknown error'}`
+                });
+                document.body.appendChild(alert);
+                alert.show();
+            }
+        } catch (error) {
+            const alert = Object.assign(document.createElement('sl-alert'), {
+                variant: 'danger',
+                duration: 5000,
+                closable: true,
+                innerHTML: '❌ Network error while deleting screenshot'
+            });
+            document.body.appendChild(alert);
+            alert.show();
+        }
+    }
+
+    function showNotification(message, variant = 'success', duration = 3000) {
+        const alert = Object.assign(document.createElement('sl-alert'), {
+            variant: variant,
+            duration: duration,
+            closable: true,
+            innerHTML: message
+        });
+
+        // Set stacking index for multiple alerts
+        const existingAlerts = document.querySelectorAll('sl-alert');
+        alert.style.setProperty('--alert-index', existingAlerts.length);
+
+        document.body.appendChild(alert);
+        alert.show();
+
+        // Remove from DOM after it closes
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, duration + 500);
     }
 
     // Cleanup interval on page unload

@@ -256,7 +256,11 @@ class ScreenshotWorker:
             time.sleep(3)
 
             # Set window size for consistent screenshots
-            self.driver.set_window_size(1920, 1080)
+            total_height = self.driver.execute_script("return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)")
+            viewport_height = max(1080, min(total_height, 8000))  # Dynamic height, capped at 8000px
+
+            self.driver.set_window_size(1920, viewport_height)
+            logger.info(f"Set viewport to 1920x{viewport_height} (page height: {total_height})")
 
             # Take screenshot
             temp_file = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
