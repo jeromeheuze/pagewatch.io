@@ -186,3 +186,4 @@ class QueueManager {
         return $stmt->fetch_all(MYSQLI_ASSOC);
     }
 }
+?>
