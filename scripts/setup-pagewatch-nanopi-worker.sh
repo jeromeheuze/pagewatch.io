@@ -75,6 +75,7 @@ class ScreenshotWorker:
         try:
             from selenium import webdriver
             from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
 
             options = Options()
             options.add_argument('--headless')
@@ -97,7 +98,9 @@ class ScreenshotWorker:
             elif os.path.exists('/usr/bin/google-chrome'):
                 options.binary_location = '/usr/bin/google-chrome'
 
-            self.driver = webdriver.Chrome(options=options)
+            # Specify chromedriver service explicitly
+            service = Service('/usr/bin/chromedriver')
+            self.driver = webdriver.Chrome(service=service, options=options)
 
         except Exception as e:
             logger.warning(f"Chrome setup failed: {e}")
