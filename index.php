@@ -34,13 +34,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
             padding: 1rem;
         }
 
         main {
             max-width: 600px;
             width: 100%;
+            margin-top: 1rem;
         }
 
         sl-card::part(base) {
@@ -120,16 +120,15 @@
     </sl-card>
     <sl-card>
         <h2>Coming Soon</h2>
-        <p>We’re working behind the scenes. Want to be the first to know when we launch?</p>
+        <p>Want to be the first to know when we launch full tracking? Leave your email:</p>
         <form id="notifyForm">
             <sl-input type="email" name="email" id="email" placeholder="Enter your email" filled required style="width: 100%; max-width: 300px;"></sl-input>
             <sl-button type="submit" variant="primary">Notify Me</sl-button>
         </form>
-
         <div id="statusContainer"></div>
     </sl-card>
     <footer style="text-align: center; padding: 1.5rem 1rem; font-size: 0.9rem; color: #888;">
-        <p>&copy; <?=date("Y");?> PageWatch.io – All rights reserved.</p>
+        <p>&copy; <?=date("Y");?> <a href="/">PageWatch.io</a> – All rights reserved.</p>
     </footer>
 </main>
 
