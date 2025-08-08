@@ -107,7 +107,7 @@ if (!isset($_SESSION['user_id'])) {
         </sl-card>
 
         <!-- Starter Plan -->
-        <sl-card style="max-width: 280px; border: 2px solid #3b82f6;">
+        <sl-card style="max-width: 280px; border: 2px solid #3b82f6;position: relative;">
             <div style="position: absolute; top: -10px; right: 10px; background: #3b82f6; color: #fff; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem;">
                 POPULAR
             </div>
