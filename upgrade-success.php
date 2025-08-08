@@ -124,6 +124,7 @@ try {
     <nav>
         <a href="/">Home</a>
         <a href="dashboard.php">Dashboard</a>
+        <a href="quick-screenshots.php">Quick Screenshots</a>
         <a href="workers.php">Workers</a>
         <a href="upgrade.php" class="active">Upgrade</a>
         <a href="logout.php">Logout</a>

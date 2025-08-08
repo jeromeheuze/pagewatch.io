@@ -258,6 +258,7 @@ $website_count = $websites_stmt->get_result()->fetch_assoc()['count'];
     <nav>
         <a href="/">Home</a>
         <a href="dashboard.php">Dashboard</a>
+        <a href="quick-screenshots.php">Quick Screenshots</a>
         <a href="workers.php">Workers</a>
         <a href="upgrade.php" class="active">Upgrade</a>
         <a href="logout.php">Logout</a>
@@ -419,7 +420,7 @@ $website_count = $websites_stmt->get_result()->fetch_assoc()['count'];
                 </li>
                 <li>
                     <div class="feature-icon">✓</div>
-                    <span>Hourly, daily + weekly screenshots</span>
+                    <span>Daily + weekly screenshots</span>
                 </li>
                 <li>
                     <div class="feature-icon">✓</div>

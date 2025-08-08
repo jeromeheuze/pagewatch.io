@@ -28,7 +28,7 @@ if (empty($screenshot_id)) {
 try {
     // Get screenshot details first (to verify ownership and get CDN URL)
     $stmt = $DBcon->prepare("
-        SELECT id, user_id, cdn_url, status 
+        SELECT id, user_id, cdn_url, status, created_at 
         FROM screenshot_jobs 
         WHERE id = ? AND user_id = ?
     ");
@@ -46,7 +46,7 @@ try {
     if (!empty($screenshot['cdn_url'])) {
         $cdn_deleted = deleteCDNFile($screenshot['cdn_url']);
         if (!$cdn_deleted) {
-            logger.warning("Failed to delete CDN file: " . $screenshot['cdn_url']);
+            error_log("Failed to delete CDN file: " . $screenshot['cdn_url']);
         }
     }
 
@@ -55,7 +55,7 @@ try {
     $delete_stmt->bind_param("ii", $screenshot_id, $user_id);
 
     if ($delete_stmt->execute()) {
-        // Update daily usage count (reduce by 1)
+        // Update daily usage count (reduce by 1) if the screenshot was completed
         if ($screenshot['status'] === 'completed') {
             $usage_stmt = $DBcon->prepare("
                 UPDATE daily_usage 

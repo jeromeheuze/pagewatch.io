@@ -398,6 +398,7 @@ $websites = $websites_stmt->get_result();
     <nav>
         <a href="/">Home</a>
         <a href="dashboard.php" class="active">Dashboard</a>
+        <a href="quick-screenshots.php">Quick Screenshots</a>
         <a href="workers.php">Workers</a>
         <a href="upgrade.php">Upgrade</a>
         <a href="logout.php">Logout</a>
@@ -547,6 +548,8 @@ $websites = $websites_stmt->get_result();
                     <sl-icon name="camera" slot="prefix"></sl-icon>
                     Take Screenshot
                 </sl-button>
+
+                <sl-button type="button" variant="default" href="quick-screenshots.php">View all Quick Screenshots</sl-button>
 
                 <?php if ($daily_used >= $user['daily_screenshot_limit']): ?>
                     <div style="color: #ef4444; font-size: 0.9rem; text-align: center;">

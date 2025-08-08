@@ -585,7 +585,7 @@ if ($is_logged_in) {
                 <div style="font-size: 2rem; font-weight: bold; color: #10b981; margin-bottom: 1rem;">$29<span style="font-size: 1rem;">/mo</span></div>
                 <ul style="list-style: none; padding: 0; color: #94a3b8; text-align: left;">
                     <li>✅ 50 websites</li>
-                    <li>✅ Hourly + daily + weekly</li>
+                    <li>✅ Daily + weekly screenshots</li>
                     <li>✅ 90-day history</li>
                     <li>✅ 50 manual screenshots/day</li>
                 </ul>
