@@ -65,9 +65,13 @@ try {
             margin: 0.5rem 0;
             text-decoration: none;
             font-size: 0.95rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: all 0.2s;
         }
-        aside nav a:hover {
+        aside nav a:hover, aside nav a.active {
             color: var(--sl-color-primary-500);
+            background: rgba(59, 130, 246, 0.1);
         }
         main {
             flex-grow: 1;
@@ -104,15 +108,24 @@ try {
             text-align: center;
             border-radius: 8px;
         }
+        .plans-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
     </style>
 </head>
 <body>
 <aside>
     <div class="logo">PageWatch.io</div>
     <nav>
+        <a href="/">Home</a>
         <a href="dashboard.php">Dashboard</a>
         <a href="workers.php">Workers</a>
-        <a href="upgrade.php">Upgrade</a>
+        <a href="upgrade.php" class="active">Upgrade</a>
         <a href="logout.php">Logout</a>
     </nav>
 </aside>

@@ -229,6 +229,7 @@
 <aside>
     <div class="logo">PageWatch.io</div>
     <nav>
+        <a href="/">Home</a>
         <a href="dashboard.php">Dashboard</a>
         <a href="workers.php" class="active">Workers</a>
         <a href="upgrade.php">Upgrade</a>
@@ -240,7 +241,6 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h1 style="color:#fff; margin: 0;">Workers & Queue</h1>
         <sl-button variant="default" size="small" onclick="loadAllData()" class="refresh-button">
-            <sl-icon name="refresh-cw" slot="prefix"></sl-icon>
             Refresh
         </sl-button>
     </div>

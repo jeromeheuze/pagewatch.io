@@ -74,6 +74,7 @@
             font-weight: 600;
             padding: 0.75rem 2rem;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
 
         sl-button::part(base):hover {
@@ -181,6 +182,14 @@
             font-size: 0.9rem;
             color: #93c5fd;
         }
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1rem 0;
+            background: rgba(26, 26, 26, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -192,6 +201,7 @@
 
     <!-- Check if user is logged in -->
     <div id="auth-check" style="display: none;">
+        <a href="dashboard.php">Dashboard</a>
         <div class="screenshot-module">
             <h2 style="color: #fff; margin-bottom: 1rem; text-align: center;">Take a Screenshot</h2>
 
@@ -211,7 +221,7 @@
 
                 <div class="form-row">
                     <sl-button type="submit" variant="primary" size="large" id="takeScreenshotBtn">
-                        📷 Take Screenshot
+                        Take Screenshot
                     </sl-button>
                     <div style="color: #94a3b8; font-size: 0.9rem; align-self: center;">
                         <span id="usage-display">Loading...</span>
@@ -226,7 +236,23 @@
             <div id="statusContainer"></div>
             <div id="queuePosition" style="display: none;"></div>
         </div>
+    </div>
 
+    <!-- Auth section for non-logged-in users -->
+    <div id="auth-required" class="auth-section">
+        <h2 style="color: #fff; margin-bottom: 1rem;">Get Started with Free Screenshots</h2>
+        <p style="color: #94a3b8; margin-bottom: 2rem;">Create an account to take your first screenshot. Free users get 1 screenshot per day!</p>
+
+        <sl-button href="login.php" variant="primary" class="login-button">
+            Login
+        </sl-button>
+
+        <sl-button href="register.php" variant="default" class="register-button">
+            Sign Up Free
+        </sl-button>
+    </div>
+
+    <div class="featuresContainer">
         <div class="features">
             <div class="feature-card">
                 <div style="font-size: 2rem; color: #3b82f6; margin-bottom: 1rem;">🖥️</div>
@@ -245,23 +271,11 @@
             </div>
         </div>
     </div>
-
-    <!-- Auth section for non-logged-in users -->
-    <div id="auth-required" class="auth-section">
-        <h2 style="color: #fff; margin-bottom: 1rem;">Get Started with Free Screenshots</h2>
-        <p style="color: #94a3b8; margin-bottom: 2rem;">Create an account to take your first screenshot. Free users get 1 screenshot per day!</p>
-
-        <sl-button href="login.php" variant="primary" class="login-button">
-            <sl-icon name="log-in" slot="prefix"></sl-icon>
-            Login
-        </sl-button>
-
-        <sl-button href="register.php" variant="default" class="register-button">
-            <sl-icon name="user-plus" slot="prefix"></sl-icon>
-            Sign Up Free
-        </sl-button>
-    </div>
 </div>
+
+<footer class="footer">
+    <p>&copy; <?=date('Y');?> - PageWatch.io - All rights reserved.</p>
+</footer>
 
 <script>
     let pollInterval;
@@ -410,10 +424,10 @@
                     <img src="${result.cdn_url}" alt="Website Screenshot" class="screenshot-preview" />
                     <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
                         <sl-button href="${result.cdn_url}" target="_blank" variant="primary" size="small">
-                            🔗 View Full Size
+                            View Full Size
                         </sl-button>
                         <sl-button onclick="copyToClipboard('${result.cdn_url}')" variant="default" size="small">
-                            📋 Copy URL
+                            Copy URL
                         </sl-button>
                     </div>
                     <p style="margin-top: 1rem; font-size: 0.9rem; color: #94a3b8;">

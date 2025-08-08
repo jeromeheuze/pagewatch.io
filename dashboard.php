@@ -1,11 +1,102 @@
+<?php
+session_start();
+include './bin/dbconnect.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Get user plan to enforce limits
+$stmt = $DBcon->prepare("SELECT plan FROM users WHERE id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$user = $stmt->get_result()->fetch_assoc();
+$user_plan = $user['plan'];
+
+// Set plan limits
+$plan_limits = [
+        'free' => 3,
+        'starter' => 10,
+        'pro' => 50
+];
+$max_urls = $plan_limits[$user_plan];
+
+// Create websites table if not exists (for quick setup)
+$DBcon->query("CREATE TABLE IF NOT EXISTS websites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    url VARCHAR(500),
+    name VARCHAR(255),
+    frequency ENUM('weekly', 'daily', 'hourly') DEFAULT 'weekly',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+)");
+
+$DBcon->query("CREATE TABLE IF NOT EXISTS screenshots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    website_id INT,
+    file_path VARCHAR(500),
+    status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
+    taken_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (website_id) REFERENCES websites(id)
+)");
+
+// Handle form submission
+$message = '';
+if ($_POST['action'] === 'add_website') {
+    $url = trim($_POST['url']);
+    $name = trim($_POST['name']) ?: parse_url($url, PHP_URL_HOST);
+
+    // Check URL limit
+    $count_stmt = $DBcon->prepare("SELECT COUNT(*) as count FROM websites WHERE user_id = ?");
+    $count_stmt->bind_param("i", $user_id);
+    $count_stmt->execute();
+    $current_count = $count_stmt->get_result()->fetch_assoc()['count'];
+
+    if ($current_count >= $max_urls) {
+        $message = "You've reached your plan limit of {$max_urls} websites. <a href='upgrade.php'>Upgrade</a> to add more.";
+    } else {
+        // Add website
+        $stmt = $DBcon->prepare("INSERT INTO websites (user_id, url, name) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $user_id, $url, $name);
+        if ($stmt->execute()) {
+            $message = "Website added successfully!";
+        } else {
+            $message = "Error adding website.";
+        }
+    }
+}
+
+// Handle screenshot request
+if ($_POST['action'] === 'take_screenshot') {
+    $website_id = $_POST['website_id'];
+
+    // Add screenshot request
+    $stmt = $DBcon->prepare("INSERT INTO screenshots (website_id, status) VALUES (?, 'pending')");
+    $stmt->bind_param("i", $website_id);
+    $stmt->execute();
+
+    $message = "Screenshot request added! Check back in a few minutes.";
+}
+
+// Get user's websites
+$websites_stmt = $DBcon->prepare("SELECT * FROM websites WHERE user_id = ? ORDER BY created_at DESC");
+$websites_stmt->bind_param("i", $user_id);
+$websites_stmt->execute();
+$websites = $websites_stmt->get_result();
+
+?>
 <!DOCTYPE html>
 <html lang="en" class="sl-theme-dark">
 <head>
     <meta charset="UTF-8" />
     <title>Dashboard – PageWatch.io</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/dark.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/themes/dark.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.15.0/cdn/shoelace.js"></script>
     <style>
         body {
             margin: 0;
@@ -47,176 +138,63 @@
             padding: 2rem;
             overflow-y: auto;
         }
-
-        .stats-grid {
+        .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: #1a1a1a;
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid #333;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--sl-color-primary-500);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: #ccc;
-            font-size: 0.9rem;
-        }
-
-        .quick-screenshot {
-            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .screenshot-grid {
-            display: grid;
+            gap: 1.5rem;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            margin-top: 2rem;
+        }
+        sl-card::part(base) {
+            background: #1a1a1a;
+            border-radius: var(--sl-border-radius-large);
+            box-shadow: var(--sl-shadow-large);
+        }
+        .screenshot-preview {
+            margin-top: 0.75rem;
+            max-width: 100%;
+            border-radius: 0.5rem;
+            border: 1px solid #333;
+        }
+        .form-wrap {
+            max-width: 500px;
+            margin-bottom: 2rem;
+        }
+        .form-wrap form {
+            display: grid;
             gap: 1rem;
         }
-
-        .screenshot-card {
+        .plan-info {
             background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 12px;
             padding: 1rem;
-            transition: transform 0.2s;
-        }
-
-        .screenshot-card:hover {
-            transform: translateY(-2px);
-            border-color: #444;
-        }
-
-        .screenshot-image {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
             border-radius: 8px;
+            margin-bottom: 2rem;
             border: 1px solid #333;
-            margin-bottom: 1rem;
         }
-
-        .screenshot-url {
-            color: var(--sl-color-primary-400);
+        .website-card {
+            padding: 1rem;
+        }
+        .website-url {
+            color: #3b82f6;
             font-size: 0.9rem;
-            margin-bottom: 0.5rem;
             word-break: break-all;
         }
-
-        .screenshot-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.8rem;
-            color: #999;
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        .status-completed { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-        .status-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-        .status-processing { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-        .status-failed { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: #666;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 1rem;
-            align-items: end;
+        .screenshot-status {
             margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
         }
-
-        .url-input {
-            flex: 1;
-        }
-
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            z-index: 10;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #333;
-            border-top: 3px solid var(--sl-color-primary-500);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Top-right alert notifications */
-        sl-alert {
-            position: absolute !important;
-            top: 1rem !important;
-            right: 1rem !important;
-            z-index: 9999 !important;
-            max-width: 400px !important;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-            border-radius: 8px !important;
-            animation: slideInRight 0.3s ease-out !important;
-        }
-
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* Stack multiple alerts */
-        sl-alert:nth-of-type(n+2) {
-            top: calc(1rem + (80px * var(--alert-index, 1))) !important;
-        }
+        .status-pending { background: #fbbf24; color: #000; }
+        .status-completed { background: #10b981; color: #fff; }
+        .status-failed { background: #ef4444; color: #fff; }
     </style>
 </head>
 <body>
+
 <aside>
     <div class="logo">PageWatch.io</div>
     <nav>
+        <a href="/">Home</a>
         <a href="dashboard.php" class="active">Dashboard</a>
         <a href="workers.php">Workers</a>
         <a href="upgrade.php">Upgrade</a>
@@ -225,350 +203,92 @@
 </aside>
 
 <main>
-    <h1 style="color:#fff; margin-bottom: 2rem;">Dashboard</h1>
+    <h1 style="color:#fff;">Dashboard</h1>
 
-    <!-- Stats Overview -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-value" id="todayCount">-</div>
-            <div class="stat-label">Screenshots Today</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value" id="totalCount">-</div>
-            <div class="stat-label">Total Screenshots</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value" id="queueCount">-</div>
-            <div class="stat-label">Queue Length</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value" id="workerCount">-</div>
-            <div class="stat-label">Active Workers</div>
-        </div>
+    <div class="plan-info">
+        <strong style="color: #fff;"><?php echo ucfirst($user_plan); ?> Plan</strong> -
+        <?php
+        $current_count = $websites->num_rows;
+        echo "$current_count / $max_urls websites";
+        ?>
+        <?php if ($user_plan === 'free'): ?>
+            <a href="upgrade.php" style="margin-left: 1rem; color: #3b82f6;">Upgrade for more</a>
+        <?php endif; ?>
     </div>
 
-    <!-- Quick Screenshot -->
-    <div class="quick-screenshot">
-        <h2 style="color: #fff; margin-bottom: 1rem;">Take a Screenshot</h2>
-        <form id="quickScreenshotForm">
-            <div class="form-row">
+    <?php if ($message): ?>
+        <sl-alert variant="primary" open style="margin-bottom: 2rem;">
+            <?php echo $message; ?>
+        </sl-alert>
+    <?php endif; ?>
+
+    <!-- Add Website Form -->
+    <div class="form-wrap">
+        <sl-card>
+            <h3 style="color: #fff; margin-bottom: 1rem;">Add Website to Monitor</h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="add_website">
                 <sl-input
-                        id="quickUrlInput"
                         type="url"
-                        placeholder="Enter website URL"
-                        size="large"
-                        class="url-input"
+                        name="url"
+                        label="Website URL"
+                        placeholder="https://example.com"
                         required
-                >
-                    🔗
-                </sl-input>
-                <sl-button type="submit" variant="primary" size="large" id="quickScreenshotBtn">
-                    📷 Capture
-                </sl-button>
-            </div>
-        </form>
-        <div id="quickStatus" style="margin-top: 1rem;"></div>
+                ></sl-input>
+                <sl-input
+                        type="text"
+                        name="name"
+                        label="Display Name (optional)"
+                        placeholder="My Company Homepage"
+                ></sl-input>
+                <sl-button type="submit" variant="primary">Add Website</sl-button>
+            </form>
+        </sl-card>
     </div>
 
-    <!-- Screenshots Gallery -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="color: #fff; margin: 0;">Recent Screenshots</h2>
-        <sl-button variant="default" size="small" onclick="loadScreenshots()">
-            🔄 Refresh
-        </sl-button>
-    </div>
+    <!-- Websites Grid -->
+    <?php if ($websites->num_rows > 0): ?>
+        <div class="grid">
+            <?php while ($website = $websites->fetch_assoc()): ?>
+                <sl-card class="website-card">
+                    <h4 style="color: #fff; margin: 0 0 0.5rem 0;"><?php echo htmlspecialchars($website['name']); ?></h4>
+                    <div class="website-url"><?php echo htmlspecialchars($website['url']); ?></div>
+                    <div style="color: #94a3b8; font-size: 0.8rem; margin: 0.5rem 0;">
+                        Added: <?php echo date('M j, Y', strtotime($website['created_at'])); ?>
+                    </div>
 
-    <div id="screenshotsContainer">
-        <div class="loading-overlay">
-            <div class="spinner"></div>
+                    <!-- Take Screenshot Button -->
+                    <form method="POST" style="margin-top: 1rem;">
+                        <input type="hidden" name="action" value="take_screenshot">
+                        <input type="hidden" name="website_id" value="<?php echo $website['id']; ?>">
+                        <sl-button type="submit" variant="default" size="small">Take Screenshot</sl-button>
+                    </form>
+
+                    <?php
+                    // Get latest screenshot status
+                    $screenshot_stmt = $DBcon->prepare("SELECT * FROM screenshots WHERE website_id = ? ORDER BY taken_at DESC LIMIT 1");
+                    $screenshot_stmt->bind_param("i", $website['id']);
+                    $screenshot_stmt->execute();
+                    $screenshot = $screenshot_stmt->get_result()->fetch_assoc();
+
+                    if ($screenshot):
+                        ?>
+                        <div class="screenshot-status status-<?php echo $screenshot['status']; ?>">
+                            Status: <?php echo ucfirst($screenshot['status']); ?>
+                            <br>Requested: <?php echo date('M j, H:i', strtotime($screenshot['taken_at'])); ?>
+                        </div>
+                    <?php endif; ?>
+                </sl-card>
+            <?php endwhile; ?>
         </div>
-    </div>
+    <?php else: ?>
+        <div style="text-align: center; padding: 3rem; color: #94a3b8;">
+            <h3>No websites added yet</h3>
+            <p>Add your first website above to start monitoring!</p>
+        </div>
+    <?php endif; ?>
+
 </main>
 
-<script>
-    let refreshInterval;
-
-    // Load dashboard data on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        loadDashboardStats();
-        loadScreenshots();
-
-        // Auto-refresh every 30 seconds
-        refreshInterval = setInterval(() => {
-            loadDashboardStats();
-            loadScreenshots();
-        }, 30000);
-    });
-
-    // Quick screenshot form
-    document.getElementById('quickScreenshotForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const urlInput = document.getElementById('quickUrlInput');
-        const submitBtn = document.getElementById('quickScreenshotBtn');
-        const statusDiv = document.getElementById('quickStatus');
-
-        const url = urlInput.value.trim();
-        if (!url) return;
-
-        submitBtn.loading = true;
-
-        try {
-            const response = await fetch('api/screenshot.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                statusDiv.innerHTML = `
-                        <sl-alert variant="success" open>
-                            <sl-icon slot="icon" name="check-circle"></sl-icon>
-                            Screenshot queued! Position #${result.queue_position}
-                        </sl-alert>
-                    `;
-                urlInput.value = '';
-                setTimeout(() => loadScreenshots(), 2000);
-            } else {
-                statusDiv.innerHTML = `
-                        <sl-alert variant="danger" open>
-                            <sl-icon slot="icon" name="x-circle"></sl-icon>
-                            ${result.message}
-                        </sl-alert>
-                    `;
-            }
-        } catch (error) {
-            statusDiv.innerHTML = `
-                    <sl-alert variant="danger" open>
-                        <sl-icon slot="icon" name="x-circle"></sl-icon>
-                        Network error. Please try again.
-                    </sl-alert>
-                `;
-        } finally {
-            submitBtn.loading = false;
-        }
-    });
-
-    async function loadDashboardStats() {
-        try {
-            const response = await fetch('api/dashboard-stats.php');
-            const stats = await response.json();
-
-            if (stats.success) {
-                document.getElementById('todayCount').textContent = stats.today_count || 0;
-                document.getElementById('totalCount').textContent = stats.total_count || 0;
-                document.getElementById('queueCount').textContent = stats.queue_count || 0;
-                document.getElementById('workerCount').textContent = stats.active_workers || 0;
-            }
-        } catch (error) {
-            console.error('Failed to load stats:', error);
-        }
-    }
-
-    async function loadScreenshots() {
-        const container = document.getElementById('screenshotsContainer');
-
-        try {
-            const response = await fetch('api/user-screenshots.php');
-            const data = await response.json();
-
-            if (data.success && data.screenshots.length > 0) {
-                container.innerHTML = `
-                        <div class="screenshot-grid">
-                            ${data.screenshots.map(screenshot => createScreenshotCard(screenshot)).join('')}
-                        </div>
-                    `;
-            } else {
-                container.innerHTML = `
-                        <div class="empty-state">
-                            <sl-icon name="camera" style="font-size: 3rem; color: #444; margin-bottom: 1rem;"></sl-icon>
-                            <h3 style="color: #666;">No screenshots yet</h3>
-                            <p style="color: #666;">Take your first screenshot using the form above!</p>
-                        </div>
-                    `;
-            }
-        } catch (error) {
-            container.innerHTML = `
-                    <div class="empty-state">
-                        <sl-icon name="alert-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></sl-icon>
-                        <h3 style="color: #ef4444;">Failed to load screenshots</h3>
-                        <p style="color: #666;">Please refresh the page and try again.</p>
-                    </div>
-                `;
-        }
-    }
-
-    function createScreenshotCard(screenshot) {
-        const createdAt = new Date(screenshot.created_at).toLocaleDateString();
-        const domain = new URL(screenshot.url).hostname;
-
-        return `
-                <div class="screenshot-card">
-                    ${screenshot.status === 'completed' ?
-            `<img src="${screenshot.cdn_url}" alt="Screenshot of ${domain}" class="screenshot-image" onclick="viewScreenshot('${screenshot.cdn_url}', '${domain}')" style="cursor: pointer;" />` :
-            `<div class="screenshot-image" style="display: flex; align-items: center; justify-content: center; background: #2a2a2a;">
-                            <div style="text-align: center;">
-                                ${screenshot.status === 'processing' ?
-                '<div class="spinner" style="margin: 0 auto 1rem;"></div><p style="color: #3b82f6;">Processing...</p>' :
-                screenshot.status === 'pending' ?
-                    '<sl-icon name="clock" style="font-size: 2rem; color: #fbbf24; margin-bottom: 1rem;"></sl-icon><p style="color: #fbbf24;">Queued</p>' :
-                    '<sl-icon name="x-circle" style="font-size: 2rem; color: #ef4444; margin-bottom: 1rem;"></sl-icon><p style="color: #ef4444;">Failed</p>'
-            }
-                            </div>
-                        </div>`
-        }
-
-                    <div class="screenshot-url">${domain}</div>
-                    <div class="screenshot-meta">
-                        <span>${createdAt}</span>
-                        <span class="status-badge status-${screenshot.status}">${screenshot.status}</span>
-                    </div>
-
-                    ${screenshot.status === 'completed' ?
-            `<div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                            <sl-button href="${screenshot.cdn_url}" target="_blank" variant="primary" size="small" style="flex: 1;">
-                                <sl-icon name="external-link" slot="prefix"></sl-icon>
-                                View
-                            </sl-button>
-                            <sl-button onclick="copyToClipboard('${screenshot.cdn_url}')" variant="default" size="small">
-                                <sl-icon name="copy"></sl-icon>
-                            </sl-button>
-                            <sl-button onclick="deleteScreenshot(${screenshot.id})" variant="danger" size="small" outline>
-                             <sl-icon name="trash"></sl-icon>
-                             </sl-button>
-                        </div>` : ''
-        }
-
-                    ${screenshot.status === 'failed' && screenshot.error_message ?
-            `<div style="margin-top: 1rem; padding: 0.5rem; background: rgba(239, 68, 68, 0.1); border-radius: 6px; font-size: 0.8rem; color: #ef4444;">
-                            ${screenshot.error_message}
-                        </div><br><sl-button onclick="deleteScreenshot(${screenshot.id})" variant="danger" size="small" outline>
-                             <sl-icon name="trash"></sl-icon> Delete
-                             </sl-button>` : ''
-        }
-                </div>
-            `;
-    }
-
-    function viewScreenshot(url, domain) {
-        // Open in a modal-like new tab
-        const newWindow = window.open('', '_blank');
-        newWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Screenshot: ${domain}</title>
-                    <style>
-                        body { margin: 0; background: #000; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-                        img { max-width: 100%; max-height: 100%; border: 1px solid #333; }
-                    </style>
-                </head>
-                <body>
-                    <img src="${url}" alt="Screenshot of ${domain}" />
-                </body>
-                </html>
-            `);
-    }
-
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            const alert = Object.assign(document.createElement('sl-alert'), {
-                variant: 'success',
-                duration: 3000,
-                closable: true,
-                innerHTML: '✅ URL copied to clipboard!'
-            });
-            document.body.appendChild(alert);
-            alert.show();
-        }).catch(() => {
-            const alert = Object.assign(document.createElement('sl-alert'), {
-                variant: 'danger',
-                duration: 3000,
-                closable: true,
-                innerHTML: '❌ Failed to copy URL'
-            });
-            document.body.appendChild(alert);
-            alert.show();
-        });
-    }
-
-    async function deleteScreenshot(screenshotId) {
-        if (!confirm('Are you sure you want to delete this screenshot? This action cannot be undone.')) {
-            return;
-        }
-
-        try {
-            const response = await fetch('api/delete-screenshot.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ screenshot_id: screenshotId })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                const alert = Object.assign(document.createElement('sl-alert'), {
-                    variant: 'success',
-                    duration: 3000,
-                    closable: true,
-                    innerHTML: '✅ Screenshot deleted successfully'
-                });
-                document.body.appendChild(alert);
-                alert.show();
-
-                // Reload screenshots after successful deletion
-                setTimeout(() => loadScreenshots(), 500);
-            } else {
-                const alert = Object.assign(document.createElement('sl-alert'), {
-                    variant: 'danger',
-                    duration: 5000,
-                    closable: true,
-                    innerHTML: `❌ Failed to delete: ${result.message || 'Unknown error'}`
-                });
-                document.body.appendChild(alert);
-                alert.show();
-            }
-        } catch (error) {
-            const alert = Object.assign(document.createElement('sl-alert'), {
-                variant: 'danger',
-                duration: 5000,
-                closable: true,
-                innerHTML: '❌ Network error while deleting screenshot'
-            });
-            document.body.appendChild(alert);
-            alert.show();
-        }
-    }
-
-    function showNotification(message, variant = 'success', duration = 3000) {
-        const alert = Object.assign(document.createElement('sl-alert'), {
-            variant: variant,
-            duration: duration,
-            closable: true,
-            innerHTML: message
-        });
-
-        // Set stacking index for multiple alerts
-        const existingAlerts = document.querySelectorAll('sl-alert');
-        alert.style.setProperty('--alert-index', existingAlerts.length);
-
-        document.body.appendChild(alert);
-        alert.show();
-
-        // Remove from DOM after it closes
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.parentNode.removeChild(alert);
-            }
-        }, duration + 500);
-    }
-
-    // Cleanup interval on page unload
-    window.addEventListener('beforeunload', () => {
-        if (refreshInterval) clearInterval(refreshInterval);
-    });
-</script>
 </body>
 </html>
