@@ -36,13 +36,13 @@ if ($is_logged_in) {
     <meta property="og:description" content="Monitor website changes with automated screenshots. Track competitors, monitor your sites, and catch changes instantly." />
     <meta property="og:url" content="https://pagewatch.io" />
     <meta property="og:site_name" content="PageWatch.io" />
-    <meta property="og:image" content="https://pagewatch.io/og-image.png" />
+    <meta property="og:image" content="https://pagewatch.io/og-banner.jpg" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="PageWatch.io - Website Screenshot Monitoring" />
     <meta name="twitter:description" content="Automated website screenshots to track changes and monitor competitors." />
-    <meta name="twitter:image" content="https://pagewatch.io/twitter-image.png" />
+    <meta name="twitter:image" content="https://pagewatch.io/og-banner.jpg" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://pagewatch.io" />
